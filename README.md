@@ -70,9 +70,7 @@ Hasil run baru disimpan di:
 local_results/projects/<judul-project>__<signature>/
 ```
 
-## Catatan
+## Dokumentasi
 
-- Aplikasi saat ini ditujukan untuk pemakaian lokal.
-- Docker, GitHub Actions, dan pre-commit belum disertakan karena belum diperlukan.
-- `.gitignore` tetap dipertahankan agar secrets, virtual environment, cache, dan hasil lokal tidak ikut tersimpan jika Git dipakai nanti.
-- `pyproject.toml` dipakai untuk konfigurasi Ruff, pytest, dan metadata Python.
+Penjelasan lengkap mengenai proses pada setiap tahap tersedia di
+[CARA_KERJA_SISTEM.md](CARA_KERJA_SISTEM.md).
