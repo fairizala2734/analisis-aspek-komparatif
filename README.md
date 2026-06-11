@@ -32,9 +32,6 @@ api_key = "ISI_OPENROUTER_API_KEY_DI_SINI"
 
 dengan API key OpenRouter milik Anda.
 
-File `.streamlit/secrets.toml` tidak ikut Git karena sudah masuk `.gitignore`.
-Template `secrets.example.toml` aman diunggah karena tidak berisi credential asli.
-
 ## Alur Analisis
 
 `CSV + hal yang dibandingkan -> validasi -> opinion unit -> POS -> candidate code -> normalisasi -> ringkasan`
