@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comparative-qualitative-analysis"
+version = "2.0.0"
+description = "Streamlit pipeline for domain-agnostic comparative qualitative analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "openai>=1.30.0",
+  "pandas>=2.0.0",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.2.0",
+  "stanza>=1.8.0",
+  "streamlit>=1.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.5.0",
+]
+
+[tool.setuptools.packages.find]
+include = [
+  "llm*",
+  "pipeline*",
+  "storage*",
+  "ui*",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+extend-exclude = [
+  "local_results",
+  "pipeline/engine.py",
+  "venv",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"llm/prompts/*.py" = ["E501"]
+"ui/components.py" = ["E501"]
+"storage/database.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
