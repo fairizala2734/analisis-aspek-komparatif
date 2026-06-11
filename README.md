@@ -69,8 +69,3 @@ Hasil run baru disimpan di:
 ```text
 local_results/projects/<judul-project>__<signature>/
 ```
-
-## Dokumentasi
-
-Penjelasan lengkap mengenai proses pada setiap tahap tersedia di
-[CARA_KERJA_SISTEM.md](CARA_KERJA_SISTEM.md).

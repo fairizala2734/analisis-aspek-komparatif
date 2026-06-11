@@ -11,3 +11,4 @@ venv/
 *.sqlite3
 .streamlit/secrets.toml
 local_results/
+CARA_KERJA_SISTEM.md
