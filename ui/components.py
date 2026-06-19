@@ -7,26 +7,50 @@ def inject_custom_css() -> None:
     st.markdown(
         """
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
         :root {
-            --app-bg: #f6f8fb;
+            --app-bg: #f6f7fb;
             --surface: #ffffff;
-            --surface-soft: #f1f5f9;
-            --border: #d9e2ec;
-            --text-main: #182230;
-            --text-muted: #536579;
-            --accent: #2563eb;
-            --accent-dark: #1d4ed8;
-            --accent-soft: #eaf2ff;
-            --success: #0f766e;
-            --warning: #b45309;
-            --danger: #b91c1c;
+            --surface-soft: #f8f9ff;
+            --border: #e2e7f0;
+            --text-main: #182033;
+            --text-muted: #697386;
+            --accent: #5b5bf0;
+            --accent-dark: #4747d7;
+            --accent-soft: #eeeeff;
+            --accent-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --success: #15803d;
+            --success-soft: #eaf8ef;
+            --warning: #a16207;
+            --warning-soft: #fff8df;
+            --danger: #dc2626;
+            --danger-soft: #fff0f0;
+            --shadow-sm: 0 1px 2px rgba(24, 32, 51, 0.04), 0 4px 14px rgba(24, 32, 51, 0.04);
+            --shadow-md: 0 12px 30px rgba(76, 78, 160, 0.10);
+        }
+        html, body, [class*="css"], .stApp {
+            font-family: "Inter", sans-serif;
         }
         .stApp { background: var(--app-bg); color: var(--text-main); }
         [data-testid="stSidebarNav"] { display: none; }
+        [data-testid="stAppViewContainer"] .main .block-container,
+        [data-testid="stMainBlockContainer"],
         .main .block-container {
-            max-width: 1240px;
-            padding-top: 2rem;
+            width: 100%;
+            max-width: none;
+            padding-top: 1.75rem;
             padding-bottom: 3rem;
+            padding-left: clamp(0.75rem, 1.2vw, 1.5rem);
+            padding-right: clamp(0.75rem, 1.2vw, 1.5rem);
+        }
+        [data-testid="stAppViewContainer"] {
+            padding-left: 0;
+            padding-right: 0;
+        }
+        [data-testid="stAppViewContainer"] .main {
+            max-width: none;
+            width: 100%;
         }
         .main .block-container,
         .main .block-container p,
@@ -42,6 +66,7 @@ def inject_custom_css() -> None:
             color: var(--text-main) !important;
         }
         h1, h2, h3, h4, h5, h6 {
+            font-family: "Plus Jakarta Sans", sans-serif;
             color: var(--text-main);
             letter-spacing: 0;
         }
@@ -66,15 +91,16 @@ def inject_custom_css() -> None:
         div[data-testid="stExpander"] {
             background: #ffffff;
             border: 1px solid var(--border);
-            border-radius: 8px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
         }
         button[role="tab"] *,
         div[data-testid="stTabs"] * {
             color: var(--text-main);
         }
         section[data-testid="stSidebar"] {
-            background: #f0f5fb;
+            background: #f2f3fb;
             border-right: 1px solid var(--border);
             color: var(--text-main);
         }
@@ -91,21 +117,23 @@ def inject_custom_css() -> None:
             border: 1px solid #bfdbfe;
         }
         .sidebar-brand {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px 14px;
-            margin-bottom: 14px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            position: relative;
+            overflow: hidden;
+            background: var(--accent-gradient);
+            border: 0;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 18px;
+            box-shadow: 0 12px 26px rgba(91, 91, 240, 0.20);
         }
         .sidebar-brand-title {
             font-weight: 800;
             font-size: 1rem;
             margin-bottom: 4px;
-            color: var(--text-main);
+            color: #ffffff !important;
         }
         .sidebar-brand-subtitle {
-            color: var(--text-muted) !important;
+            color: rgba(255, 255, 255, 0.82) !important;
             font-size: 0.82rem;
             line-height: 1.35;
         }
@@ -120,21 +148,21 @@ def inject_custom_css() -> None:
         .nav-active {
             display: block;
             background: #ffffff;
-            border: 1px solid #bcd4f6;
+            border: 1px solid #d9dcff;
             border-left: 4px solid var(--accent);
-            border-radius: 8px;
-            padding: 10px 11px;
+            border-radius: 12px;
+            padding: 12px 13px;
             margin: 6px 0;
             color: var(--text-main);
             font-weight: 800;
-            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
+            box-shadow: 0 6px 18px rgba(91, 91, 240, 0.10);
         }
         .nav-link {
             display: block;
             background: transparent;
             border: 1px solid transparent;
-            border-radius: 8px;
-            padding: 10px 11px;
+            border-radius: 12px;
+            padding: 12px 13px;
             margin: 6px 0;
             color: var(--text-main) !important;
             font-weight: 750;
@@ -142,7 +170,9 @@ def inject_custom_css() -> None:
         }
         .nav-link:hover {
             background: #ffffff;
-            border-color: var(--border);
+            border-color: #dfe1ff;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
             text-decoration: none !important;
         }
         .nav-link-title {
@@ -158,15 +188,24 @@ def inject_custom_css() -> None:
             font-weight: 500;
         }
         div[data-testid="stAlert"] {
-            border-radius: 8px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
         }
         div[data-testid="stAlert"] * {
             color: var(--text-main) !important;
         }
         div[data-testid="stFileUploader"] section {
             background: #ffffff;
-            border: 1px dashed #9fb3c8;
-            border-radius: 8px;
+            border: 1.5px dashed #b7b9ec;
+            border-radius: 16px;
+            padding: 0.5rem;
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        div[data-testid="stFileUploader"] section:hover {
+            border-color: var(--accent);
+            box-shadow: 0 10px 25px rgba(91, 91, 240, 0.09);
+            transform: translateY(-1px);
         }
         div[data-testid="stFileUploader"] section * {
             color: var(--text-main) !important;
@@ -180,23 +219,48 @@ def inject_custom_css() -> None:
             color: var(--text-muted) !important;
         }
         div[data-testid="stMetric"] {
+            position: relative;
+            overflow: hidden;
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px 16px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+        div[data-testid="stMetric"]::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 4px;
+            background: var(--accent-gradient);
+        }
+        div[data-testid="stMetric"]:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
         div[data-testid="stMetricLabel"] p { color: var(--text-muted); font-size: 0.86rem; }
         div[data-testid="stMetricValue"] { color: var(--text-main); font-weight: 700; }
         .app-hero {
-            background:
-                linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(242,247,255,0.96) 56%, rgba(238,250,247,0.96) 100%),
-                radial-gradient(circle at 92% 10%, rgba(37,99,235,0.10), transparent 28%);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 28px 30px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #ffffff 0%, #f0f1ff 52%, #f5edff 100%);
+            border: 1px solid #dfe1ff;
+            border-radius: 16px;
+            padding: clamp(24px, 3vw, 42px);
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+        }
+        .app-hero::after {
+            content: "";
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            right: -65px;
+            top: -85px;
+            border-radius: 50%;
+            background: rgba(139, 92, 246, 0.10);
+            pointer-events: none;
         }
         .app-hero h1 {
             margin: 0 0 10px 0;
@@ -211,7 +275,7 @@ def inject_custom_css() -> None:
             align-items: center;
             gap: 8px;
             margin-bottom: 10px;
-            color: #1d4ed8;
+            color: #5654d8 !important;
             font-size: 0.82rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -229,18 +293,17 @@ def inject_custom_css() -> None:
             min-height: 28px;
             padding: 5px 10px;
             border-radius: 999px;
-            background: #ffffff;
-            border: 1px solid #cfe0f5;
-            color: #334155;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid #d9dcff;
+            color: #344054;
             font-size: 0.82rem;
             font-weight: 650;
         }
         .onboarding-strip {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-            margin: 4px 0 20px 0;
+            gap: 10px;
+            margin: 4px 0 24px 0;
         }
         .onboarding-strip.onboarding-four {
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -251,6 +314,15 @@ def inject_custom_css() -> None:
             gap: 10px;
             padding: 14px 16px;
             min-width: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+        .onboarding-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
         .onboarding-item + .onboarding-item {
             border-left: 1px solid var(--border);
@@ -261,9 +333,9 @@ def inject_custom_css() -> None:
             justify-content: center;
             width: 28px;
             height: 28px;
-            border-radius: 8px;
-            background: var(--accent-soft);
-            color: #1d4ed8 !important;
+            border-radius: 10px;
+            background: var(--accent-gradient);
+            color: #ffffff !important;
             font-weight: 800;
         }
         .onboarding-item strong {
@@ -279,8 +351,8 @@ def inject_custom_css() -> None:
         .empty-state {
             background: #ffffff;
             border: 1px dashed #9fb3c8;
-            border-radius: 8px;
-            padding: 22px;
+            border-radius: 16px;
+            padding: 28px;
             margin: 12px 0 18px 0;
         }
         .empty-state strong {
@@ -304,14 +376,14 @@ def inject_custom_css() -> None:
         .soft-panel {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 14px;
             padding: 16px 18px;
             margin: 10px 0 16px 0;
         }
         .insight-panel {
-            background: #ffffff;
+            background: linear-gradient(135deg, #ffffff, #f7f7ff);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 14px;
             padding: 14px 16px;
             margin: 12px 0 18px 0;
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -321,6 +393,66 @@ def inject_custom_css() -> None:
         }
         .insight-panel span {
             color: var(--text-muted) !important;
+        }
+        .completion-panel {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            margin: 18px 0 12px;
+            padding: 22px 24px;
+            background: linear-gradient(135deg, #eefbf3 0%, #ffffff 48%, #f1f1ff 100%);
+            border: 1px solid #cdebd8;
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
+        }
+        .completion-panel::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 5px;
+            background: linear-gradient(180deg, #22c55e, #5b5bf0);
+        }
+        .completion-copy {
+            min-width: 0;
+        }
+        .completion-title {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-main) !important;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-size: 1.06rem;
+            font-weight: 800;
+        }
+        .completion-body {
+            color: var(--text-muted) !important;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .completion-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex: 0 0 auto;
+            min-height: 48px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: var(--accent-gradient);
+            color: #ffffff !important;
+            font-size: 0.92rem;
+            font-weight: 800;
+            text-decoration: none !important;
+            box-shadow: 0 10px 22px rgba(91, 91, 240, 0.24);
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+        .completion-cta:hover {
+            color: #ffffff !important;
+            text-decoration: none !important;
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(91, 91, 240, 0.30);
         }
         .section-title {
             display: flex;
@@ -334,9 +466,9 @@ def inject_custom_css() -> None:
             justify-content: center;
             width: 30px;
             height: 30px;
-            border-radius: 8px;
-            background: var(--accent-soft);
-            color: #1d4ed8;
+            border-radius: 10px;
+            background: var(--accent-gradient);
+            color: #ffffff !important;
             font-weight: 800;
             flex: 0 0 auto;
         }
@@ -354,7 +486,7 @@ def inject_custom_css() -> None:
             background: #ffffff;
             border: 1px solid var(--border);
             border-left: 4px solid var(--accent);
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 12px 14px;
             margin: 12px 0;
             color: var(--text-muted);
@@ -362,12 +494,34 @@ def inject_custom_css() -> None:
         .mode-help {
             background: #ffffff;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 14px;
             padding: 14px 16px;
             margin: 12px 0;
         }
         .mode-help strong { color: var(--text-main); }
         .mode-help p { margin: 4px 0 0 0; color: var(--text-muted) !important; }
+        .entity-separator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 76px;
+            padding-top: 10px;
+            color: var(--accent) !important;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: var(--border);
+            border-radius: 14px;
+            background: var(--surface);
+            box-shadow: var(--shadow-sm);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+            border-color: #cfd1ff;
+            box-shadow: var(--shadow-md);
+        }
         .step-row {
             display: grid;
             grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -377,12 +531,18 @@ def inject_custom_css() -> None:
         .step-pill {
             min-height: 72px;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 14px;
             background: #ffffff;
             padding: 12px;
             color: var(--text-muted);
             font-size: 0.84rem;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+            box-shadow: var(--shadow-sm);
+            transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+        }
+        .step-pill:hover {
+            transform: translateY(-2px);
+            border-color: #cfd1ff;
+            box-shadow: var(--shadow-md);
         }
         .step-pill strong { display: block; color: var(--text-main); margin-bottom: 5px; }
         .step-code {
@@ -400,9 +560,10 @@ def inject_custom_css() -> None:
         .status-step {
             background: #ffffff;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 14px;
             padding: 11px 12px;
             min-height: 68px;
+            box-shadow: var(--shadow-sm);
         }
         .status-step-title {
             display: block;
@@ -411,35 +572,79 @@ def inject_custom_css() -> None:
         }
         .status-badge {
             display: inline-flex;
-            padding: 3px 7px;
+            padding: 4px 9px;
             border-radius: 999px;
             font-size: 0.74rem;
             font-weight: 800;
             text-transform: uppercase;
         }
-        .status-ok, .status-cached { background: #dcfce7; color: #166534 !important; }
-        .status-running { background: #dbeafe; color: #1d4ed8 !important; }
-        .status-error { background: #fee2e2; color: #b91c1c !important; }
-        .status-pending, .status-skipped { background: #e2e8f0; color: #475569 !important; }
+        .status-ok, .status-cached { background: var(--success-soft); color: #13733a !important; }
+        .status-running { background: var(--accent-soft); color: #4c48ce !important; }
+        .status-error { background: var(--danger-soft); color: var(--danger) !important; }
+        .status-pending, .status-skipped { background: #eef2f6; color: #667085 !important; }
         .quality-ok { color: var(--success); font-weight: 650; }
         .quality-warn { color: var(--warning); font-weight: 650; }
         .quality-bad { color: var(--danger); font-weight: 650; }
         div.stButton > button[kind="primary"] {
-            background: var(--accent);
-            border-color: var(--accent);
-            border-radius: 8px;
+            background: var(--accent-gradient);
+            border: 0;
+            border-radius: 12px;
             min-height: 46px;
             font-weight: 700;
+            color: #ffffff !important;
+            box-shadow: 0 8px 20px rgba(91, 91, 240, 0.22);
+            transition: transform 160ms ease, box-shadow 160ms ease;
         }
         div.stButton > button[kind="primary"]:hover {
-            background: var(--accent-dark);
-            border-color: var(--accent-dark);
+            background: linear-gradient(135deg, #5558e8, #7c4de3);
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(91, 91, 240, 0.28);
         }
-        div[data-testid="stDataFrame"] { border: 1px solid var(--border); border-radius: 8px; }
+        div[data-testid="stDataFrame"] {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
         div[data-testid="stDownloadButton"] button {
-            border-radius: 8px;
+            border-radius: 12px;
             min-height: 42px;
             font-weight: 700;
+        }
+        div[data-testid="stDownloadButton"] button:hover,
+        div.stButton > button:not([kind="primary"]):hover {
+            border-color: var(--accent);
+            color: var(--accent) !important;
+            transform: translateY(-1px);
+        }
+        div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+            gap: 6px;
+            background: #eef0f7;
+            border-radius: 12px;
+            padding: 5px;
+        }
+        div[data-testid="stTabs"] button[role="tab"] {
+            border-radius: 9px;
+            padding: 9px 14px;
+        }
+        div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+        }
+        div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+            background-color: transparent;
+        }
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div {
+            border-radius: 11px;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        div[data-baseweb="select"] > div:focus-within,
+        div[data-baseweb="input"] > div:focus-within,
+        div[data-baseweb="textarea"] > div:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(91, 91, 240, 0.12);
         }
         @media (max-width: 900px) {
             .step-row, .status-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -469,6 +674,14 @@ def inject_custom_css() -> None:
             .step-row, .status-stepper { grid-template-columns: 1fr; }
             .hero-actions { gap: 6px; }
             .chip { width: 100%; }
+            .entity-separator { min-height: auto; padding: 0; }
+            .completion-panel {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 16px;
+                padding: 20px;
+            }
+            .completion-cta { width: 100%; }
         }
         </style>
         """,
@@ -482,11 +695,11 @@ def render_app_header() -> None:
         <div class="app-hero">
             <div class="eyebrow">Analisis kualitatif komparatif</div>
             <h1>Analisis Aspek Komparatif</h1>
-            <p>Bantu peneliti membaca data pertanyaan-jawaban komparatif: sistem memecah jawaban menjadi unit pendapat, mengambil aspek yang dibandingkan, menyatukan label serupa, lalu menyiapkan ringkasan yang mudah ditinjau.</p>
+            <p>Upload data pertanyaan dan jawaban, tuliskan hal yang dibandingkan, lalu sistem membantu menemukan tema/aspek utama dari jawaban responden.</p>
             <div class="hero-actions">
-                <span class="chip">CSV Q&A</span>
-                <span class="chip">Candidate code netral</span>
-                <span class="chip">Ringkasan ternormalisasi</span>
+                <span class="chip">Upload CSV</span>
+                <span class="chip">Tentukan perbandingan</span>
+                <span class="chip">Lihat ringkasan aspek</span>
             </div>
         </div>
         """,
@@ -498,9 +711,9 @@ def render_results_header() -> None:
     st.markdown(
         """
         <div class="app-hero">
-            <div class="eyebrow">Dashboard hasil</div>
+            <div class="eyebrow">Hasil yang siap ditinjau</div>
             <h1>Hasil Analisis</h1>
-            <p>Tinjau ringkasan aspek, mapping normalisasi, data pendapat, dan catatan error dari run yang sudah tersimpan tanpa menjalankan ulang proses.</p>
+            <p>Lihat tema/aspek yang paling sering muncul, cek contoh pendapat pendukung, dan buka detail teknis hanya jika perlu meninjau prosesnya.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -521,11 +734,11 @@ def render_onboarding() -> None:
             </div>
             <div class="onboarding-item">
                 <span class="onboarding-number">3</span>
-                <div><strong>Periksa data</strong><p>Sistem menolak pertanyaan yang tidak cocok.</p></div>
+                <div><strong>Sistem mengecek</strong><p>Data divalidasi otomatis sebelum analisis berjalan.</p></div>
             </div>
             <div class="onboarding-item">
                 <span class="onboarding-number">4</span>
-                <div><strong>Tinjau hasil</strong><p>Buka ringkasan akhir, mapping, dan catatan kualitas.</p></div>
+                <div><strong>Tinjau hasil</strong><p>Lihat daftar aspek, frekuensi, dan contoh pendapatnya.</p></div>
             </div>
         </div>
         """,
@@ -547,12 +760,12 @@ def render_empty_state(title: str, body: str) -> None:
 
 def render_pipeline_overview() -> None:
     steps = [
-        ("01", "Baca Data", "Rapikan kolom pertanyaan dan jawaban."),
-        ("02", "Unit Pendapat", "Pecah jawaban menjadi klaim kecil."),
-        ("02c", "Struktur Bahasa", "Bantu identifikasi frasa aspek."),
-        ("03", "Aspek", "Ambil candidate_code netral posisi."),
-        ("05", "Normalisasi", "Satukan label yang maknanya sama."),
-        ("06", "Ringkasan", "Tampilkan frekuensi dan contoh."),
+        ("01", "Baca Data", "Sistem mengenali kolom pertanyaan dan jawaban."),
+        ("02", "Pecah Jawaban", "Jawaban panjang dibagi menjadi pendapat kecil."),
+        ("03", "Cek Bahasa", "Struktur kalimat dibantu dibaca oleh sistem."),
+        ("04", "Cari Aspek", "Sistem mengambil hal yang sedang dibandingkan."),
+        ("05", "Rapikan Label", "Nama aspek yang mirip digabung."),
+        ("06", "Buat Ringkasan", "Tampilkan jumlah kemunculan dan contoh pendapat."),
     ]
     html = '<div class="step-row">'
     for code, title, body in steps:
@@ -563,12 +776,12 @@ def render_pipeline_overview() -> None:
 
 def render_status_stepper(statuses: dict[str, str]) -> None:
     steps = [
-        ("01", "Raw", "raw_dataset"),
-        ("02", "Opinion", "opinion_units"),
-        ("02c", "POS", "pos_tagging"),
-        ("03", "Candidate", "candidate_codes"),
-        ("05", "Normalisasi", "candidate_normalization"),
-        ("06", "Ringkasan", "candidate_summary"),
+        ("1", "Data siap", "raw_dataset"),
+        ("2", "Pendapat dipisah", "opinion_units"),
+        ("3", "Bahasa dicek", "pos_tagging"),
+        ("4", "Aspek ditemukan", "candidate_codes"),
+        ("5", "Label dirapikan", "candidate_normalization"),
+        ("6", "Ringkasan jadi", "candidate_summary"),
     ]
     html = '<div class="status-stepper">'
     for code, title, key in steps:
@@ -604,32 +817,33 @@ def render_sidebar(llm_api_key: str, llm_model: str, local_results_dir: Path, *,
             """
             <div class="sidebar-brand">
                 <div class="sidebar-brand-title">Analisis Aspek</div>
-                <div class="sidebar-brand-subtitle">Tool bantu coding kualitatif untuk data tanya-jawab komparatif.</div>
+                <div class="sidebar-brand-subtitle">Bantu membaca pola jawaban dari pertanyaan komparatif.</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
         st.markdown('<div class="nav-label">Navigasi</div>', unsafe_allow_html=True)
         if active == "run":
-            st.markdown('<div class="nav-active">Run Analisis<span class="nav-hint">Upload CSV dan jalankan pipeline</span></div>', unsafe_allow_html=True)
+            st.markdown('<div class="nav-active">Mulai Analisis<span class="nav-hint">Upload data dan isi perbandingan</span></div>', unsafe_allow_html=True)
         else:
-            st.markdown('<a class="nav-link" href="/"><span class="nav-link-title">Run Analisis</span><span class="nav-hint">Upload CSV dan jalankan pipeline</span></a>', unsafe_allow_html=True)
+            st.markdown('<a class="nav-link" href="/" target="_self"><span class="nav-link-title">Mulai Analisis</span><span class="nav-hint">Upload data dan isi perbandingan</span></a>', unsafe_allow_html=True)
 
         if active == "results":
             st.markdown('<div class="nav-active">Hasil Analisis<span class="nav-hint">Dashboard, tabel, dan download</span></div>', unsafe_allow_html=True)
         else:
-            st.markdown('<a class="nav-link" href="/Hasil"><span class="nav-link-title">Hasil Analisis</span><span class="nav-hint">Dashboard, tabel, dan download</span></a>', unsafe_allow_html=True)
+            st.markdown('<a class="nav-link" href="/Hasil" target="_self"><span class="nav-link-title">Hasil Analisis</span><span class="nav-hint">Dashboard, tabel, dan download</span></a>', unsafe_allow_html=True)
         st.divider()
         st.header("Sistem")
         if llm_api_key:
-            st.success("OpenRouter API key aktif.")
+            st.success("Koneksi AI aktif.")
         else:
-            st.warning("OPENROUTER_API_KEY belum diisi.")
-        st.caption(f"Model: `{llm_model}`")
-        st.caption(f"Hasil: `{local_results_dir}`")
+            st.warning("API key belum diisi.")
+        with st.expander("Detail teknis"):
+            st.caption(f"Model: `{llm_model}`")
+            st.caption(f"Folder hasil: `{local_results_dir}`")
         st.divider()
         st.markdown("**Cara pakai**")
-        st.caption("Upload CSV, pastikan kolom benar, pilih mode analisis, lalu buka halaman Hasil.")
+        st.caption("Upload CSV, isi hal yang dibandingkan, mulai analisis, lalu buka halaman Hasil.")
         st.divider()
         st.markdown("**Output utama**")
-        st.caption("Ringkasan aspek komparatif ternormalisasi, lengkap dengan frekuensi, posisi, dan contoh opinion unit.")
+        st.caption("Daftar aspek yang muncul, jumlah kemunculan, dan contoh jawaban pendukung.")

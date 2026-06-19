@@ -1728,7 +1728,7 @@ def render_advanced_settings() -> Dict[str, Any]:
         "Pilih cara menjalankan",
         [
             "Analisis penuh",
-            "Cek cepat 10 baris",
+            "Cek cepat 5 baris",
             "Ulang dari candidate_code",
             "Ulang normalisasi saja",
             "Manual",
@@ -1739,7 +1739,7 @@ def render_advanced_settings() -> Dict[str, Any]:
 
     preset_defaults = {
         "Analisis penuh": ("Sampai candidate_summary normalisasi (06)", 0, False, False, ""),
-        "Cek cepat 10 baris": ("Sampai candidate_summary normalisasi (06)", 10, False, False, ""),
+        "Cek cepat 5 baris": ("Sampai candidate_summary normalisasi (06)", 5, False, False, ""),
         "Ulang dari candidate_code": ("Sampai candidate_summary normalisasi (06)", 0, False, True, "Candidate codes (03)"),
         "Ulang normalisasi saja": ("Sampai candidate_summary normalisasi (06)", 0, False, True, "Normalisasi candidate_code (05)"),
         "Manual": ("Sampai candidate_summary normalisasi (06)", 0, False, False, ""),
@@ -1748,7 +1748,7 @@ def render_advanced_settings() -> Dict[str, Any]:
 
     preset_descriptions = {
         "Analisis penuh": ("Analisis penuh", "Memproses semua baris sampai ringkasan aspek ternormalisasi. Cache tetap dipakai jika dataset yang sama sudah pernah diproses."),
-        "Cek cepat 10 baris": ("Cek cepat", "Memakai 10 baris pertama untuk memeriksa format CSV, koneksi model, dan bentuk hasil sebelum menjalankan semua data."),
+        "Cek cepat 5 baris": ("Cek cepat", "Memakai 5 baris pertama untuk memeriksa format CSV, koneksi model, dan bentuk hasil sebelum menjalankan semua data."),
         "Ulang dari candidate_code": ("Ulang aspek", "Memakai opinion unit dan POS lama, lalu membuat ulang candidate_code, normalisasi, dan ringkasan akhir."),
         "Ulang normalisasi saja": ("Ulang normalisasi", "Memakai candidate_code lama, lalu menyatukan ulang aspek serupa dan membangun ringkasan akhir."),
         "Manual": ("Manual", "Membuka kontrol lengkap untuk memilih batas tahap, cache, retry, timeout, dan opsi debug."),
@@ -2102,55 +2102,105 @@ def render_candidate_code_editor(project_dir: Path) -> None:
         return
 
     editor_df = summary_df.loc[:, ["normalized_candidate_code", "frequency", "sample_opinion_units"]].copy()
-    editor_df.insert(0, "pilih", False)
-    editor_df["action"] = editor_df["normalized_candidate_code"].astype(str)
     candidate_options = sorted(
         {str(code).strip() for code in summary_df["normalized_candidate_code"].fillna("").astype(str).tolist() if str(code).strip()}
     )
     action_options = candidate_options + ["Buat candidate code baru"]
-    st.caption("Ceklis baris yang ingin diubah, lalu pilih target candidate code di kolom Action.")
-    edited_df = st.data_editor(
-        editor_df,
-        key=f"candidate_code_editor_{project_dir.name}",
-        hide_index=True,
-        width="stretch",
-        num_rows="fixed",
-        column_config={
-            "pilih": st.column_config.CheckboxColumn("Pilih", help="Ceklis baris yang ingin diubah."),
-            "normalized_candidate_code": st.column_config.TextColumn(
-                "normalized_candidate_code",
-                disabled=True,
-            ),
-            "frequency": st.column_config.NumberColumn(
-                "frequency",
-                disabled=True,
-            ),
-            "sample_opinion_units": st.column_config.TextColumn(
-                "sample_opinion_units",
-                disabled=True,
-                width="large",
-            ),
-            "action": st.column_config.SelectboxColumn(
-                "Action",
-                options=action_options,
-                required=True,
-                help="Pilih candidate code tujuan. Jika belum ada, pilih buat baru.",
-            ),
-        },
-        disabled=["normalized_candidate_code", "frequency", "sample_opinion_units"],
+    st.caption(
+        "Centang aspek yang ingin diubah, lalu pilih tujuan pada dropdown di sebelah kanan. "
+        "Gunakan pencarian agar daftar panjang lebih mudah ditinjau."
     )
 
-    manual_code = st.text_input(
-        "Nama candidate code baru",
-        key=f"manual_candidate_code_{project_dir.name}",
-        placeholder="Contoh: motif",
-        help="Dipakai jika Action memilih 'Buat candidate code baru'.",
-    ).strip()
+    filter_column, rows_column, page_column = st.columns([5, 2, 2])
+    with filter_column:
+        editor_query = st.text_input(
+            "Cari aspek",
+            key=f"candidate_code_search_{project_dir.name}",
+            placeholder="Ketik nama aspek atau contoh pendapat...",
+        ).strip().casefold()
+    with rows_column:
+        editor_page_size = st.selectbox(
+            "Tampilkan",
+            options=[10, 25, 50],
+            key=f"candidate_code_page_size_{project_dir.name}",
+        )
 
-    selected_rows = edited_df[edited_df["pilih"].astype(bool)].copy()
+    filtered_editor = editor_df.copy()
+    if editor_query:
+        search_text = (
+            filtered_editor["normalized_candidate_code"].fillna("").astype(str)
+            + " "
+            + filtered_editor["sample_opinion_units"].fillna("").astype(str)
+        ).str.casefold()
+        filtered_editor = filtered_editor[search_text.str.contains(editor_query, regex=False)]
+
+    total_editor_rows = len(filtered_editor)
+    total_editor_pages = max(1, (total_editor_rows + editor_page_size - 1) // editor_page_size)
+    with page_column:
+        editor_page = st.number_input(
+            "Halaman",
+            min_value=1,
+            max_value=total_editor_pages,
+            value=1,
+            step=1,
+            key=f"candidate_code_page_{project_dir.name}_{editor_query}_{editor_page_size}",
+        )
+
+    page_start = (int(editor_page) - 1) * editor_page_size
+    page_rows = filtered_editor.iloc[page_start : page_start + editor_page_size]
+    st.caption(
+        f"Menampilkan {len(page_rows)} dari {total_editor_rows} aspek"
+        + (f" pada halaman {int(editor_page)} dari {total_editor_pages}." if total_editor_pages > 1 else ".")
+    )
+
+    selected_records: list[dict[str, Any]] = []
+    for row in page_rows.to_dict(orient="records"):
+        source_code = str(row.get("normalized_candidate_code", "")).strip()
+        frequency = int(row.get("frequency", 0) or 0)
+        sample = str(row.get("sample_opinion_units", "") or "").strip()
+        row_key = hashlib.sha256(source_code.encode("utf-8")).hexdigest()[:12]
+
+        with st.container(border=True):
+            select_column, detail_column, action_column = st.columns([0.7, 5.3, 3])
+            with select_column:
+                is_selected = st.checkbox(
+                    "Pilih",
+                    key=f"candidate_select_{project_dir.name}_{row_key}",
+                    label_visibility="collapsed",
+                    help=f"Pilih aspek {source_code} untuk diubah.",
+                )
+            with detail_column:
+                st.markdown(f"**{source_code}** &nbsp; · &nbsp; {frequency} kemunculan")
+                st.caption(sample or "Belum ada contoh pendapat.")
+            with action_column:
+                action = st.selectbox(
+                    "Pindahkan ke",
+                    options=action_options,
+                    index=action_options.index(source_code),
+                    key=f"candidate_action_{project_dir.name}_{row_key}",
+                    help="Pilih aspek tujuan, atau buat nama aspek baru.",
+                )
+                manual_code = ""
+                if action == "Buat candidate code baru":
+                    manual_code = st.text_input(
+                        "Nama aspek baru",
+                        key=f"candidate_new_code_{project_dir.name}_{row_key}",
+                        placeholder="Contoh: motif",
+                    ).strip()
+
+        if is_selected:
+            selected_records.append(
+                {
+                    "normalized_candidate_code": source_code,
+                    "action": action,
+                    "manual_code": manual_code,
+                }
+            )
+
+    selected_rows = pd.DataFrame(selected_records)
     if st.button("Terapkan perubahan manual", type="primary", width="stretch"):
         if selected_rows.empty:
-            st.warning("Pilih minimal satu baris dulu.")
+            st.warning("Pilih minimal satu aspek pada halaman yang sedang tampil.")
             return
 
         edit_rows: list[dict[str, Any]] = []
@@ -2162,8 +2212,9 @@ def render_candidate_code_editor(project_dir: Path) -> None:
             if not source_code or not action:
                 continue
             if action == "Buat candidate code baru":
+                manual_code = str(row.get("manual_code", "")).strip()
                 if not manual_code:
-                    st.error("Isi nama candidate code baru dulu.")
+                    st.error(f'Isi nama aspek baru untuk "{source_code}" terlebih dahulu.')
                     return
                 target_code = manual_code
                 action_label = "manual_create"
@@ -2248,18 +2299,20 @@ def show_outputs(project_dir: Path) -> None:
     ui.render_status_stepper(_pipeline_output_statuses(project_dir))
 
     m1, m2, m3, m4, m5, m6 = st.columns(6)
-    m1.metric("Pertanyaan lolos", raw_n)
-    m2.metric("Ditolak awal", rejected_input_n)
-    m3.metric("Opinion unit", op_n)
-    m4.metric("Aspek mentah", summary_n or cand_n)
+    m1.metric("Pertanyaan dianalisis", raw_n)
+    m2.metric("Tidak dipakai", rejected_input_n)
+    m3.metric("Potongan pendapat", op_n)
+    m4.metric("Aspek ditemukan", summary_n or cand_n)
     m5.metric("Aspek akhir", normalized_summary_n)
-    m6.metric("Error", error_n)
+    m6.metric("Perlu dicek", error_n)
 
     usage = _llm_usage_summary(project_dir)
-    usage_a, usage_b, usage_c = st.columns(3)
-    usage_a.metric("Panggilan LLM tercatat", int(usage["calls"]))
-    usage_b.metric("Token tercatat", f"{int(usage['tokens']):,}")
-    usage_c.metric("Waktu respons LLM", f"{usage['seconds']:.1f} dtk")
+    with st.expander("Lihat detail proses sistem"):
+        st.caption("Bagian ini untuk audit teknis. Pengguna umum bisa langsung membaca ringkasan hasil di bawah.")
+        usage_a, usage_b, usage_c = st.columns(3)
+        usage_a.metric("Panggilan AI", int(usage["calls"]))
+        usage_b.metric("Token terpakai", f"{int(usage['tokens']):,}")
+        usage_c.metric("Waktu respons AI", f"{usage['seconds']:.1f} dtk")
 
     health_text, health_class = _normalization_health(mapping_df)
     changed_count = 0
@@ -2269,42 +2322,21 @@ def show_outputs(project_dir: Path) -> None:
     reduction_text = "belum tersedia"
     if summary_n and normalized_summary_n:
         reduction_text = f"{summary_n} aspek mentah menjadi {normalized_summary_n} aspek akhir"
-    st.markdown(
-        f"""
-        <div class="insight-panel">
-            <strong>Kualitas normalisasi:</strong> <span class="{health_class}">{health_text}</span><br>
-            <span>{reduction_text}. Perubahan label terdeteksi: {changed_count}. Error tercatat: {error_n}.</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     quality_report = _load_quality_report(project_dir)
     generic_heads = quality_report.get("generic_heads_detected") or []
     relabel = quality_report.get("overmerge_relabel") or quality_report.get("relabel") or {}
-    st.markdown("**Pemeriksaan kualitas**")
-    quality_a, quality_b, quality_c = st.columns(3)
-    quality_a.metric(
-        "Generic heads",
-        len(generic_heads) if isinstance(generic_heads, list) else 0,
-    )
-    quality_b.metric(
-        "Relabel overmerge",
-        len(relabel) if isinstance(relabel, (list, dict)) else int(bool(relabel)),
-    )
-    quality_c.metric("Baris error", error_n)
     if error_n:
         st.warning(
-            "Ada baris yang gagal diproses. Buka tab Diagnostik & error sebelum memakai hasil akhir."
+            "Ada beberapa data yang perlu dicek. Buka tab Catatan proses sebelum memakai hasil akhir."
         )
     elif generic_heads:
         st.warning(
-            "Normalisasi mendeteksi kepala label yang terlalu generik. Tinjau mapping step 05."
+            "Beberapa nama aspek mungkin masih terlalu umum. Buka tab Perubahan label untuk meninjaunya."
         )
     elif mapping_df.empty:
-        st.info("Laporan normalisasi belum tersedia untuk run ini.")
+        st.info("Laporan perapihan label belum tersedia untuk run ini.")
     else:
-        st.success("Tidak ada peringatan kualitas utama yang tercatat pada run ini.")
+        st.success("Hasil terlihat siap ditinjau.")
 
     final_summary = _read_output(project_dir, "06_candidate_summary_normalized.csv", NORMALIZED_SUMMARY_COLUMNS)
     early_summary = _read_output(project_dir, "04_candidate_summary.csv", SUMMARY_COLUMNS)
@@ -2313,20 +2345,64 @@ def show_outputs(project_dir: Path) -> None:
 
     tabs = st.tabs([
         "Ringkasan akhir",
-        "Aspek sebelum/sesudah",
-        "Edit candidate code",
-        "Data pendapat",
-        "Diagnostik & error",
+        "Perubahan label",
+        "Edit aspek",
+        "Data pendukung",
+        "Catatan proses",
     ])
 
     with tabs[0]:
-        if not final_summary.empty:
-            render_paginated_dataframe(final_summary, key="final_summary", label="Ringkasan akhir", default_page_size=25)
-        elif not early_summary.empty:
-            st.info("Ringkasan normalisasi belum tersedia. Menampilkan ringkasan awal.")
-            render_paginated_dataframe(early_summary, key="early_summary_fallback", label="Ringkasan awal", default_page_size=25)
-        else:
-            st.info("Ringkasan belum tersedia.")
+        overview_col, table_col = st.columns([0.95, 1.35], gap="large")
+        with overview_col:
+            st.markdown("**Sorotan hasil**")
+            st.caption("Ringkasan singkat untuk membaca hasil tanpa masuk ke detail teknis.")
+            if not final_summary.empty:
+                metric_a, metric_b, metric_c = st.columns(3)
+                metric_a.metric("Aspek akhir", normalized_summary_n)
+                metric_b.metric("Label dirapikan", changed_count)
+                metric_c.metric("Perlu dicek", error_n)
+                st.markdown(
+                    f"""
+                    <div class="insight-panel">
+                        <strong>Status hasil:</strong> <span class="{health_class}">{health_text}</span><br>
+                        <span>{reduction_text}. Label yang dirapikan: {changed_count}. Data perlu dicek: {error_n}.</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                if generic_heads:
+                    st.warning(
+                        "Ada nama aspek yang mungkin masih terlalu umum. Cek tab Perubahan label bila hasil terasa terlalu melebar."
+                    )
+                elif relabel:
+                    st.info("Ada label yang dirapikan otomatis. Detailnya tersedia di tab Perubahan label.")
+                else:
+                    st.success("Ringkasan akhir sudah stabil dan siap ditinjau.")
+            elif not early_summary.empty:
+                metric_a, metric_b, metric_c = st.columns(3)
+                metric_a.metric("Aspek awal", summary_n or cand_n)
+                metric_b.metric("Aspek akhir", normalized_summary_n)
+                metric_c.metric("Perlu dicek", error_n)
+                st.info("Ringkasan akhir belum tersedia. Panel kanan menampilkan ringkasan sementara.")
+            else:
+                st.info("Ringkasan belum tersedia.")
+        with table_col:
+            if not final_summary.empty:
+                render_paginated_dataframe(
+                    final_summary,
+                    key="final_summary",
+                    label="Ringkasan akhir",
+                    default_page_size=25,
+                )
+            elif not early_summary.empty:
+                render_paginated_dataframe(
+                    early_summary,
+                    key="early_summary_fallback",
+                    label="Ringkasan awal",
+                    default_page_size=25,
+                )
+            else:
+                st.info("Ringkasan belum tersedia.")
 
     with tabs[1]:
         if not mapping_df.empty:
@@ -2339,35 +2415,36 @@ def show_outputs(project_dir: Path) -> None:
                     changed_mapping["original_candidate_code"].astype(str)
                     != changed_mapping["normalized_candidate_code"].astype(str)
                 ]
-            st.markdown("**Perubahan label pada step 05**")
+            st.markdown("**Label yang dirapikan otomatis**")
+            st.caption("Bagian ini menunjukkan nama aspek yang digabung atau dirapikan agar hasil akhir tidak terpencar.")
             if changed_mapping.empty:
-                st.info("Tidak ada perubahan label pada mapping normalisasi ini.")
+                st.info("Tidak ada label yang berubah pada run ini.")
             else:
                 render_paginated_dataframe(
                     changed_mapping,
                     key="mapping_diff",
-                    label="Perubahan sebelum dan sesudah normalisasi",
+                    label="Perubahan label",
                     default_page_size=25,
                 )
-            with st.expander("Lihat seluruh mapping normalisasi"):
+            with st.expander("Lihat seluruh riwayat perapihan label"):
                 render_paginated_dataframe(
                     mapping_df,
                     key="mapping_all",
-                    label="Seluruh mapping",
+                    label="Riwayat perapihan label",
                     default_page_size=25,
                 )
         else:
-            st.info("Belum ada mapping normalisasi.")
-        with st.expander("Lihat ringkasan aspek sebelum normalisasi"):
+            st.info("Belum ada laporan perapihan label.")
+        with st.expander("Lihat daftar aspek sebelum dirapikan"):
             if not early_summary.empty:
                 render_paginated_dataframe(
                     early_summary,
                     key="early_summary",
-                    label="Aspek sebelum normalisasi",
+                    label="Aspek sebelum dirapikan",
                     default_page_size=25,
                 )
             else:
-                st.info("Belum ada candidate_summary awal.")
+                st.info("Belum ada ringkasan aspek awal.")
 
     with tabs[2]:
         render_candidate_code_editor(project_dir)
@@ -2375,28 +2452,28 @@ def show_outputs(project_dir: Path) -> None:
     with tabs[3]:
         data_tabs = st.tabs(
             [
-                "Aspek per opinion unit",
-                "Opinion units",
-                "Raw dataset",
-                "Validasi input",
+                "Aspek per pendapat",
+                "Potongan pendapat",
+                "Data awal",
+                "Pengecekan input",
             ]
         )
         with data_tabs[0]:
             if not candidate_df.empty:
-                render_paginated_dataframe(candidate_df, key="candidate_codes", label="Aspek per opinion unit", default_page_size=25)
+                render_paginated_dataframe(candidate_df, key="candidate_codes", label="Aspek per pendapat", default_page_size=25)
             else:
-                st.info("Belum ada candidate_codes.")
+                st.info("Belum ada aspek per pendapat.")
         with data_tabs[1]:
             if not opinion_df.empty:
-                render_paginated_dataframe(opinion_df, key="opinion_units", label="Opinion units", default_page_size=25)
+                render_paginated_dataframe(opinion_df, key="opinion_units", label="Potongan pendapat", default_page_size=25)
             else:
-                st.info("Belum ada opinion_units.")
+                st.info("Belum ada potongan pendapat.")
         with data_tabs[2]:
             raw_df = _read_output(project_dir, "01_raw_dataset.csv")
             if not raw_df.empty:
-                render_paginated_dataframe(raw_df, key="raw_dataset", label="Raw dataset", default_page_size=25)
+                render_paginated_dataframe(raw_df, key="raw_dataset", label="Data awal", default_page_size=25)
             else:
-                st.info("Belum ada raw dataset.")
+                st.info("Belum ada data awal.")
         with data_tabs[3]:
             if not validation_df.empty:
                 render_paginated_dataframe(
@@ -2410,24 +2487,24 @@ def show_outputs(project_dir: Path) -> None:
 
     with tabs[4]:
         if quality_report:
-            st.markdown("**Panel kualitas normalisasi**")
+            st.markdown("**Catatan kualitas hasil**")
             if generic_heads:
-                st.write("Generic heads terdeteksi:", generic_heads)
-            with st.expander("Detail laporan kualitas"):
+                st.write("Nama aspek yang mungkin terlalu umum:", generic_heads)
+            with st.expander("Lihat laporan teknis"):
                 st.json(quality_report)
 
-        error_tabs = st.tabs(["Ringkasan file", "Opinion error", "POS error", "Candidate error", "Normalisasi error"])
+        error_tabs = st.tabs(["Ringkasan file", "Pendapat gagal", "Bahasa gagal", "Aspek gagal", "Label gagal"])
         status_rows = []
         for filename, label in [
-            ("01_entity_validation.csv", "Validasi input"),
-            ("01_raw_dataset.csv", "Raw dataset"),
-            ("02_opinion_units.csv", "Opinion units"),
-            ("02c_opinion_units_pos.csv", "POS tagging"),
-            ("03_candidate_codes.csv", "Candidate codes"),
-            ("04_candidate_summary.csv", "Candidate summary awal"),
-            ("05_candidate_code_mapping.csv", "Mapping normalisasi"),
-            ("05_candidate_code_normalized.csv", "Candidate codes normalized"),
-            ("06_candidate_summary_normalized.csv", "Candidate summary akhir"),
+            ("01_entity_validation.csv", "Pengecekan input"),
+            ("01_raw_dataset.csv", "Data awal"),
+            ("02_opinion_units.csv", "Potongan pendapat"),
+            ("02c_opinion_units_pos.csv", "Struktur bahasa"),
+            ("03_candidate_codes.csv", "Aspek per pendapat"),
+            ("04_candidate_summary.csv", "Ringkasan aspek awal"),
+            ("05_candidate_code_mapping.csv", "Riwayat perapihan label"),
+            ("05_candidate_code_normalized.csv", "Aspek setelah dirapikan"),
+            ("06_candidate_summary_normalized.csv", "Ringkasan akhir"),
         ]:
             status_rows.append({"output": label, "file": filename, "rows": _count_rows(project_dir, filename)})
         with error_tabs[0]:
@@ -2439,7 +2516,7 @@ def show_outputs(project_dir: Path) -> None:
                     error_key = Path(filename).stem.replace(".", "_")
                     render_paginated_dataframe(df, key=f"error_{error_key}", label=filename, default_page_size=25)
                 else:
-                    st.info("Tidak ada error tercatat.")
+                    st.info("Tidak ada kegagalan tercatat.")
 
     _render_output_downloads(project_dir)
     zip_bytes = make_result_zip(project_dir)
@@ -2453,6 +2530,15 @@ def show_outputs(project_dir: Path) -> None:
 
 
 def list_result_projects() -> List[Tuple[str, Path]]:
+    status_labels = {
+        "completed": "selesai",
+        "complete": "selesai",
+        "failed": "gagal",
+        "running": "proses",
+        "unknown": "belum diketahui",
+        "saved": "tersimpan",
+        "tersimpan": "tersimpan",
+    }
     try:
         storage.init_database(LOCAL_RESULTS_DIR)
         search_root = LOCAL_RESULTS_DIR / "projects"
@@ -2473,8 +2559,8 @@ def list_result_projects() -> List[Tuple[str, Path]]:
             except Exception:
                 updated_at = datetime.min
             signature = str(run.get("signature") or project_dir.name)
-            status_text = str(run.get("status") or "unknown")
-            model_text = str(run.get("model") or "-")
+            raw_status = str(run.get("status") or "unknown").lower()
+            status_text = status_labels.get(raw_status, raw_status)
             settings_json = run.get("settings_json") or "{}"
             try:
                 settings_obj = json.loads(str(settings_json))
@@ -2492,7 +2578,7 @@ def list_result_projects() -> List[Tuple[str, Path]]:
                 f"{status_text} | "
                 f"{int(run.get('raw_rows') or 0)} baris | "
                 f"{int(run.get('normalized_candidate_codes') or run.get('raw_candidate_codes') or 0)} aspek | "
-                f"{model_text} | {signature[:10]}"
+                f"kode {signature[:8]}"
             )
             projects_from_db.append((updated_at, label, project_dir))
         if projects_from_db:
@@ -2538,15 +2624,15 @@ def list_result_projects() -> List[Tuple[str, Path]]:
         final_codes = _count_rows(project_dir, "06_candidate_summary_normalized.csv")
         candidate_codes = _count_rows(project_dir, "04_candidate_summary.csv")
         signature = manifest.get("signature") or project_dir.name
-        status_text = str(manifest.get("status") or "tersimpan")
-        model_text = str(manifest.get("model") or "-")
+        raw_status = str(manifest.get("status") or "tersimpan").lower()
+        status_text = status_labels.get(raw_status, raw_status)
         project_title = str(manifest.get("project_title") or manifest.get("settings", {}).get("project_title") or project_dir.name)
-        short_sig = str(signature)[:10]
+        short_sig = str(signature)[:8]
         label = (
             f"{updated_at.strftime('%Y-%m-%d %H:%M')} | "
             f"{project_title} | "
             f"{status_text} | {raw_rows} baris | "
-            f"{final_codes or candidate_codes} aspek | {model_text} | {short_sig}"
+            f"{final_codes or candidate_codes} aspek | kode {short_sig}"
         )
         projects.append((updated_at, label, project_dir))
 
@@ -2564,21 +2650,21 @@ def render_results_page() -> None:
     if not projects:
         ui.render_empty_state(
             "Belum ada hasil analisis",
-            "Jalankan analisis pertama dari halaman Run Analisis. Hasil yang selesai akan muncul otomatis di sini.",
+            "Mulai analisis pertama dari halaman Mulai Analisis. Hasil yang selesai akan muncul otomatis di sini.",
         )
-        st.page_link("pages/1_Run_Analisis.py", label="Buka Run Analisis")
+        st.page_link("pages/1_Run_Analisis.py", label="Buka Mulai Analisis")
         return
 
     ui.render_section_title(
         1,
-        "Pilih Run",
-        "Cari berdasarkan tanggal, status, model, atau signature. Run terbaru ditampilkan di atas.",
+        "Pilih Hasil Tersimpan",
+        "Gunakan judul analisis, tanggal, atau status untuk menemukan hasil yang ingin dibuka.",
     )
     filter_left, filter_right = st.columns([2, 1])
     with filter_left:
         run_search = st.text_input(
-            "Cari run",
-            placeholder="Contoh: completed, gpt-oss, 14258a...",
+            "Cari hasil",
+            placeholder="Contoh: analisis batik, selesai, 2026-06-11...",
         ).strip().lower()
     statuses = sorted(
         {
@@ -2600,8 +2686,8 @@ def render_results_page() -> None:
 
     if not filtered_projects:
         ui.render_empty_state(
-            "Run tidak ditemukan",
-            "Ubah kata pencarian atau pilih status lain untuk menampilkan run tersimpan.",
+            "Hasil tidak ditemukan",
+            "Ubah kata pencarian atau pilih status lain untuk menampilkan hasil tersimpan.",
         )
         return
 
@@ -2617,8 +2703,12 @@ def render_results_page() -> None:
 
     selected_label = st.selectbox("Pilih hasil analisis", labels, index=default_index)
     selected_project = paths[labels.index(selected_label)]
-    st.caption(f"Folder: `{selected_project}`")
-    ui.render_section_title(2, "Ringkasan dan Tabel", "Mulai dari ringkasan akhir, lalu buka tab lain untuk audit aspek, edit label manual, opinion unit, dan error.")
+    st.caption(f"Folder hasil: `{selected_project}`")
+    ui.render_section_title(
+        2,
+        "Ringkasan Hasil",
+        "Mulai dari tabel aspek akhir. Detail proses, perubahan label, dan data pendukung tersedia di tab lain.",
+    )
     show_outputs(selected_project)
 
 
@@ -2631,13 +2721,26 @@ def render_run_completion(project_dir: Path, *, status: str = "completed") -> No
 
     if status == "failed":
         st.error("Proses berhenti karena error. Output sementara tetap bisa dicek di halaman Hasil.")
+        try:
+            st.page_link("pages/2_Hasil.py", label="Buka halaman Hasil")
+        except Exception:
+            st.info("Buka menu halaman di sidebar, lalu pilih Hasil.")
     else:
-        st.success("Analisis selesai. Hasil lengkap tersedia di halaman Hasil.")
+        st.markdown(
+            """
+            <div class="completion-panel">
+                <div class="completion-copy">
+                    <span class="completion-title">Analisis selesai</span>
+                    <span class="completion-body">Ringkasan aspek, contoh pendapat, dan hasil lengkap sudah siap ditinjau.</span>
+                </div>
+                <a class="completion-cta" href="/Hasil" target="_self">
+                    Lihat Hasil Analisis <span aria-hidden="true">&rarr;</span>
+                </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     st.caption(f"Folder hasil: `{project_dir}`")
-    try:
-        st.page_link("pages/2_Hasil.py", label="Buka halaman Hasil")
-    except Exception:
-        st.info("Buka menu halaman di sidebar, lalu pilih Hasil.")
 
 
 # ============================================================
