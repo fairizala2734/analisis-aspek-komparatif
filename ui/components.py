@@ -95,6 +95,41 @@ def inject_custom_css() -> None:
             box-shadow: var(--shadow-sm);
             overflow: hidden;
         }
+        .st-key-technical_log_container [data-testid="stCode"] {
+            max-height: 360px;
+            overflow-x: auto;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #151827;
+            scrollbar-color: #686bd8 #25293d;
+            scrollbar-width: thin;
+        }
+        .st-key-technical_log_container [data-testid="stCode"] pre {
+            min-height: 72px;
+            margin: 0;
+            background: transparent;
+            color: #e8eaf7 !important;
+            font-size: 0.78rem;
+            line-height: 1.55;
+            white-space: pre;
+        }
+        .st-key-technical_log_container [data-testid="stCode"] code,
+        .st-key-technical_log_container [data-testid="stCode"] span {
+            color: #e8eaf7 !important;
+        }
+        .st-key-technical_log_container [data-testid="stCode"]::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        .st-key-technical_log_container [data-testid="stCode"]::-webkit-scrollbar-track {
+            background: #25293d;
+        }
+        .st-key-technical_log_container [data-testid="stCode"]::-webkit-scrollbar-thumb {
+            background: #686bd8;
+            border: 2px solid #25293d;
+            border-radius: 999px;
+        }
         button[role="tab"] *,
         div[data-testid="stTabs"] * {
             color: var(--text-main);

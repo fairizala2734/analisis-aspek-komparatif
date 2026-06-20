@@ -1,7 +1,6 @@
 """Runtime entity constraints for comparative opinion extraction."""
 
 ENTITY_CONTEXT_RULES = """
-
 KONTEKS HAL YANG DIBANDINGKAN DARI PENGGUNA
 - Payload berisi comparison_entities: daftar nama utama beserta alias yang sudah divalidasi.
 - main_entity dan counterpart_entity wajib merujuk pada dua nama dari daftar tersebut.

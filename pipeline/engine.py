@@ -179,6 +179,7 @@ def format_elapsed(seconds: float) -> str:
 
 
 def make_live_logger(log_box=None, timer_box=None, start_time: Optional[float] = None):
+    max_visible_lines = 100
     lines: List[str] = []
 
     def update_timer():
@@ -190,8 +191,8 @@ def make_live_logger(log_box=None, timer_box=None, start_time: Optional[float] =
         now = datetime.now().strftime("%H:%M:%S")
         elapsed = format_elapsed(time.perf_counter() - start_time) if start_time is not None else "00:00"
         lines.append(f"[{now} | +{elapsed}] {message}")
-        # Batasi agar UI tidak berat kalau retry lama.
-        del lines[:-200]
+        # Keep only the latest entries so repeated Streamlit renders stay responsive.
+        del lines[:-max_visible_lines]
         if log_box is not None:
             log_box.code("\n".join(lines), language="text")
 
@@ -2918,7 +2919,9 @@ def main() -> None:
     progress = st.progress(0)
     status = st.empty()
     with st.expander("Log teknis", expanded=False):
-        log_box = st.empty()
+        st.caption("Menampilkan maksimal 100 aktivitas terbaru. Scroll untuk melihat log sebelumnya.")
+        with st.container(key="technical_log_container"):
+            log_box = st.empty()
     timer_stop_event, timer_thread = start_timer_watcher(timer_box, start_time)
     log_fn, update_timer_fn = make_live_logger(log_box=log_box, timer_box=timer_box, start_time=start_time)
     comparative_judger = make_comparative_judger(

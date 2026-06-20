@@ -40,7 +40,7 @@ PROMPTS = {
     ),
     "comparative_validation": PromptSpec(
         "comparative_validation",
-        "v1_llm_comparative_judger",
+        "v2_implicit_shared_aspect_judger",
         COMPARATIVE_VALIDATION_SYSTEM_PROMPT,
     ),
     "overmerge_relabel": PromptSpec(
