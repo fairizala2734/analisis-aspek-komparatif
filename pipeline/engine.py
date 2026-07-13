@@ -20,6 +20,16 @@ from openai import OpenAI
 
 import storage
 from ui import components as ui
+from pipeline.aspect_network import (
+    NETWORK_EDGE_COLUMNS,
+    NETWORK_EDGES_FILE,
+    NETWORK_NODES_FILE,
+    NETWORK_NODE_COLUMNS,
+    NETWORK_PROFILE_FILE,
+    NETWORK_RECOMMENDATION_FILE,
+    NETWORK_RECOMMENDATION_SYSTEM_PROMPT,
+    build_aspect_network_outputs,
+)
 from pipeline.config import RUN_UNTIL_OPTIONS, STEP_VERSIONS, load_settings
 from pipeline.schemas import (
     CANDIDATE_COLUMNS,
@@ -267,6 +277,39 @@ def call_llm_json(
         log_fn=log_fn,
         update_timer_fn=update_timer_fn,
     )
+
+
+def make_aspect_network_recommender(
+    *,
+    model_id: str,
+    timeout_seconds: int,
+    retry_per_call: int,
+    always_retry_per_call: bool,
+    raw_log_path: Optional[Path] = None,
+    log_fn=None,
+    update_timer_fn=None,
+    bypass_cache: bool = False,
+):
+    def _recommend(profile: Dict[str, Any]) -> Dict[str, Any]:
+        payload = {
+            "row_id": "07_network_recommendation",
+            "task": "recommend_comparative_aspect_network",
+            "dataset_profile": profile,
+        }
+        return call_llm_json(
+            NETWORK_RECOMMENDATION_SYSTEM_PROMPT,
+            payload,
+            model_id=model_id,
+            timeout_seconds=timeout_seconds,
+            retry_per_call=retry_per_call,
+            always_retry_per_call=always_retry_per_call,
+            raw_log_path=raw_log_path,
+            log_fn=log_fn,
+            update_timer_fn=update_timer_fn,
+            bypass_cache=bypass_cache,
+        )
+
+    return _recommend
 
 
 def make_comparative_judger(
@@ -1738,20 +1781,22 @@ def render_advanced_settings() -> Dict[str, Any]:
         help="Preset menyederhanakan opsi teknis. Mode manual membuka kontrol pipeline lengkap.",
     )
 
+    full_pipeline_label = "Sampai jaringan aspek (07)"
+    summary_pipeline_label = "Sampai candidate_summary normalisasi (06)"
     preset_defaults = {
-        "Analisis penuh": ("Sampai candidate_summary normalisasi (06)", 0, False, False, ""),
-        "Cek cepat 5 baris": ("Sampai candidate_summary normalisasi (06)", 5, False, False, ""),
-        "Ulang dari candidate_code": ("Sampai candidate_summary normalisasi (06)", 0, False, True, "Candidate codes (03)"),
-        "Ulang normalisasi saja": ("Sampai candidate_summary normalisasi (06)", 0, False, True, "Normalisasi candidate_code (05)"),
-        "Manual": ("Sampai candidate_summary normalisasi (06)", 0, False, False, ""),
+        "Analisis penuh": (full_pipeline_label, 0, False, False, ""),
+        "Cek cepat 5 baris": (full_pipeline_label, 5, False, False, ""),
+        "Ulang dari candidate_code": (full_pipeline_label, 0, False, True, "Candidate codes (03)"),
+        "Ulang normalisasi saja": (full_pipeline_label, 0, False, True, "Normalisasi candidate_code (05)"),
+        "Manual": (summary_pipeline_label, 0, False, False, ""),
     }
     default_run_until, default_max_rows, default_force_start, default_force_step_enabled, default_force_step_label = preset_defaults[preset]
 
     preset_descriptions = {
-        "Analisis penuh": ("Analisis penuh", "Memproses semua baris sampai ringkasan aspek ternormalisasi. Cache tetap dipakai jika dataset yang sama sudah pernah diproses."),
-        "Cek cepat 5 baris": ("Cek cepat", "Memakai 5 baris pertama untuk memeriksa format CSV, koneksi model, dan bentuk hasil sebelum menjalankan semua data."),
-        "Ulang dari candidate_code": ("Ulang aspek", "Memakai opinion unit dan POS lama, lalu membuat ulang candidate_code, normalisasi, dan ringkasan akhir."),
-        "Ulang normalisasi saja": ("Ulang normalisasi", "Memakai candidate_code lama, lalu menyatukan ulang aspek serupa dan membangun ringkasan akhir."),
+        "Analisis penuh": ("Analisis penuh", "Memproses semua baris sampai ringkasan akhir dan jaringan aspek komparatif."),
+        "Cek cepat 5 baris": ("Cek cepat", "Memakai 5 baris pertama untuk memeriksa format CSV, koneksi model, bentuk hasil, dan jaringan aspek."),
+        "Ulang dari candidate_code": ("Ulang aspek", "Memakai opinion unit dan POS lama, lalu membuat ulang candidate_code, normalisasi, ringkasan, dan jaringan aspek."),
+        "Ulang normalisasi saja": ("Ulang normalisasi", "Memakai candidate_code lama, lalu menyatukan ulang aspek serupa, membangun ringkasan, dan jaringan aspek."),
         "Manual": ("Manual", "Membuka kontrol lengkap untuk memilih batas tahap, cache, retry, timeout, dan opsi debug."),
     }
     mode_title, mode_body = preset_descriptions[preset]
@@ -1810,6 +1855,7 @@ def render_advanced_settings() -> Dict[str, Any]:
                 "Candidate codes (03)",
                 "Normalisasi candidate_code (05)",
                 "Candidate summary normalisasi (06)",
+                "Jaringan aspek (07)",
             ]
             force_from_step_label = st.selectbox(
                 "Mulai ulang dari",
@@ -1872,6 +1918,8 @@ def render_advanced_settings() -> Dict[str, Any]:
             force_from_step = "candidate_normalization"
         elif force_from_step_label == "Candidate summary normalisasi (06)":
             force_from_step = "candidate_summary"
+        elif force_from_step_label == "Jaringan aspek (07)":
+            force_from_step = "aspect_network"
 
     return {
         "model_id": selected_model,
@@ -1932,6 +1980,7 @@ def _pipeline_output_statuses(project_dir: Path) -> Dict[str, str]:
             "05_candidate_normalization_errors.csv",
         ),
         "candidate_summary": ("06_candidate_summary_normalized.csv", None),
+        "aspect_network": (NETWORK_NODES_FILE, None),
     }
     statuses: Dict[str, str] = {}
     for step, (output_name, error_name) in outputs.items():
@@ -1985,6 +2034,7 @@ def render_paginated_dataframe(
     label: str = "",
     default_page_size: int = 25,
     page_size_options: Optional[List[int]] = None,
+    height: Optional[int] = None,
 ) -> None:
     if df.empty:
         st.info("Belum ada data untuk ditampilkan.")
@@ -2044,12 +2094,289 @@ def render_paginated_dataframe(
     start = (int(current_page) - 1) * int(page_size)
     end = min(start + int(page_size), total_rows)
     st.caption(f"Menampilkan baris {start + 1:,}-{end:,} dari {total_rows:,}.")
-    st.dataframe(visible_df.iloc[start:end], width="stretch")
+    dataframe_kwargs: Dict[str, Any] = {"width": "stretch"}
+    if height is not None:
+        dataframe_kwargs["height"] = height
+    st.dataframe(visible_df.iloc[start:end], **dataframe_kwargs)
+
+
+def _render_aspect_network_svg(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, *, height: int = 820) -> None:
+    if nodes_df.empty:
+        st.info("Jaringan belum memiliki node untuk divisualkan.")
+        return
+
+    node_lookup = {str(row.get("node_id")): row for row in nodes_df.to_dict(orient="records")}
+    max_freq = max(1, int(pd.to_numeric(nodes_df["frequency"], errors="coerce").fillna(0).max()))
+    max_weight = 1
+    if not edges_df.empty and "weight" in edges_df.columns:
+        max_weight = max(1, int(pd.to_numeric(edges_df["weight"], errors="coerce").fillna(0).max()))
+
+    network_nodes: list[dict[str, Any]] = []
+    for row in nodes_df.to_dict(orient="records"):
+        node_id = str(row.get("node_id", ""))
+        label = str(row.get("label", ""))
+        node_type = str(row.get("type", "word"))
+        freq = int(float(row.get("frequency") or 0))
+        if node_type == "aspect":
+            color = {"background": "#4f46e5", "border": "#c7d2fe", "highlight": "#6366f1"}
+            font = {"color": "#172033", "size": 18, "face": "Inter", "bold": True}
+            group = "aspect"
+        else:
+            color = {"background": "#14b8a6", "border": "#ccfbf1", "highlight": "#2dd4bf"}
+            font = {"color": "#172033", "size": 15, "face": "Inter"}
+            group = "word"
+        network_nodes.append(
+            {
+                "id": node_id,
+                "label": label,
+                "title": f"{label}<br>tipe: {node_type}<br>frekuensi: {freq}",
+                "value": max(5, 12 + (freq / max_freq) * 46),
+                "group": group,
+                "shape": "dot",
+                "color": color,
+                "font": font,
+            }
+        )
+
+    network_edges: list[dict[str, Any]] = []
+    for row in edges_df.to_dict(orient="records"):
+        source = str(row.get("source", ""))
+        target = str(row.get("target", ""))
+        if source not in node_lookup or target not in node_lookup:
+            continue
+        weight = int(float(row.get("weight") or 1))
+        source_label = str(node_lookup.get(source, {}).get("label", source))
+        target_label = str(node_lookup.get(target, {}).get("label", target))
+        network_edges.append(
+            {
+                "from": source,
+                "to": target,
+                "value": max(1, weight),
+                "width": 1.0 + (weight / max_weight) * 4.0,
+                "title": f"{source_label} -> {target_label}<br>bobot: {weight}",
+                "color": {"color": "#94a3b8", "opacity": 0.55, "highlight": "#6366f1"},
+                "smooth": {"type": "dynamic"},
+            }
+        )
+
+    template = """
+    <html>
+    <head>
+      <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: transparent;
+          font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        #network-shell {
+          width: 100%;
+          height: __HEIGHT__px;
+          border: 1px solid #dbeafe;
+          border-radius: 16px;
+          background: linear-gradient(180deg, #ffffff, #f8fbff);
+          position: relative;
+          overflow: hidden;
+        }
+        #network {
+          width: 100%;
+          height: 100%;
+        }
+        #network-help {
+          position: absolute;
+          left: 14px;
+          top: 12px;
+          z-index: 10;
+          background: rgba(255, 255, 255, 0.92);
+          border: 1px solid #e2e8f0;
+          border-radius: 999px;
+          color: #475569;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 7px 11px;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        }
+        #network-error {
+          display: none;
+          padding: 18px;
+          color: #991b1b;
+          background: #fff1f2;
+          border: 1px solid #fecdd3;
+          border-radius: 12px;
+          margin: 18px;
+          font-size: 14px;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="network-shell">
+        <div id="network-help">Drag node untuk menggeser - Scroll untuk zoom - Drag area kosong untuk pan</div>
+        <div id="network"></div>
+        <div id="network-error">Visual interaktif belum bisa dimuat. Periksa koneksi internet/CDN, lalu refresh halaman.</div>
+      </div>
+      <script>
+        const nodes = new vis.DataSet(__NODES__);
+        const edges = new vis.DataSet(__EDGES__);
+        const container = document.getElementById("network");
+        const data = { nodes, edges };
+        const options = {
+          autoResize: true,
+          layout: { improvedLayout: true },
+          interaction: {
+            hover: true,
+            tooltipDelay: 80,
+            dragNodes: true,
+            dragView: true,
+            zoomView: true,
+            navigationButtons: true,
+            keyboard: true,
+            multiselect: true
+          },
+          physics: {
+            enabled: true,
+            stabilization: { enabled: true, iterations: 220, updateInterval: 20 },
+            barnesHut: {
+              gravitationalConstant: -4200,
+              centralGravity: 0.18,
+              springLength: 145,
+              springConstant: 0.035,
+              damping: 0.35,
+              avoidOverlap: 0.45
+            }
+          },
+          nodes: {
+            borderWidth: 3,
+            shadow: { enabled: true, color: "rgba(15,23,42,0.14)", size: 8, x: 0, y: 4 },
+            scaling: { min: 18, max: 58, label: { enabled: true, min: 13, max: 25 } }
+          },
+          edges: {
+            selectionWidth: 2,
+            hoverWidth: 2,
+            shadow: false,
+            smooth: { enabled: true, type: "dynamic" }
+          },
+          groups: {
+            aspect: {},
+            word: {}
+          }
+        };
+        try {
+          const network = new vis.Network(container, data, options);
+          network.once("stabilizationIterationsDone", function () {
+            network.setOptions({ physics: false });
+            network.fit({ animation: { duration: 450, easingFunction: "easeInOutQuad" } });
+            setTimeout(function () {
+              network.moveTo({
+                scale: Math.min(network.getScale() * 1.12, 1.35),
+                animation: { duration: 350, easingFunction: "easeInOutQuad" }
+              });
+            }, 500);
+          });
+        } catch (error) {
+          document.getElementById("network-error").style.display = "block";
+          console.error(error);
+        }
+      </script>
+    </body>
+    </html>
+    """
+    html_content = (
+        template.replace("__HEIGHT__", str(height))
+        .replace("__NODES__", json.dumps(network_nodes, ensure_ascii=False))
+        .replace("__EDGES__", json.dumps(network_edges, ensure_ascii=False))
+    )
+    st.components.v1.html(html_content, height=height + 8, scrolling=False)
+
+
+def render_aspect_network_tab(project_dir: Path) -> None:
+    final_summary = _read_output(project_dir, "06_candidate_summary_normalized.csv", NORMALIZED_SUMMARY_COLUMNS)
+    if final_summary.empty:
+        ui.render_empty_state(
+            "Jaringan aspek belum tersedia",
+            "Jaringan dibuat setelah ringkasan akhir 06 tersedia.",
+        )
+        return
+
+    if st.button("Bangun ulang jaringan dari hasil saat ini", width="stretch"):
+        build_aspect_network_outputs(project_dir, force=True)
+        st.success("Jaringan aspek sudah dibangun ulang dari ringkasan terbaru.")
+        st.rerun()
+
+    nodes_df, edges_df, recommendation, insights = build_aspect_network_outputs(project_dir, force=False)
+    if nodes_df.empty:
+        st.info("Jaringan belum dapat dibuat dari hasil ini.")
+        return
+
+    rec_cols = st.columns([1.15, 1.15, 1.4], gap="large")
+    with rec_cols[0]:
+        st.metric("Node jaringan", len(nodes_df))
+        st.caption("Titik yang tampil: aspek akhir dan kata pendukung.")
+    with rec_cols[1]:
+        st.metric("Hubungan", len(edges_df))
+        st.caption("Garis menunjukkan kata yang mendukung aspek tertentu.")
+    with rec_cols[2]:
+        source_label = {
+            "llm_recommendation": "Rekomendasi AI",
+            "python_fallback": "Rekomendasi otomatis",
+            "python_fallback_after_llm_error": "Fallback otomatis",
+        }.get(str(recommendation.get("source")), str(recommendation.get("source") or "otomatis"))
+        st.markdown("**Rekomendasi jaringan**")
+        st.caption(source_label)
+        st.write(str(recommendation.get("reason") or "Jaringan dibangun dari ringkasan akhir."))
+
+    _render_aspect_network_svg(nodes_df, edges_df)
+
+    st.markdown("**Cara membaca**")
+    st.caption(
+        "Node biru adalah aspek akhir. Node hijau adalah kata pendukung yang muncul dalam contoh pendapat. "
+        "Semakin besar node, semakin sering muncul; semakin tebal garis, semakin kuat hubungannya."
+    )
+
+    top_edges = edges_df.copy()
+    if not top_edges.empty:
+        node_labels = nodes_df.set_index("node_id")["label"].to_dict()
+        top_edges["source_label"] = top_edges["source"].map(node_labels)
+        top_edges["target_label"] = top_edges["target"].map(node_labels)
+        top_edges = top_edges[
+            ["source_label", "target_label", "weight", "relation", "sample_opinion_units"]
+        ].sort_values("weight", ascending=False)
+        render_paginated_dataframe(
+            top_edges,
+            key="aspect_network_edges_readable",
+            label="Hubungan jaringan",
+            default_page_size=10,
+        )
+
+    with st.expander("Lihat data teknis jaringan"):
+        if insights:
+            st.json(insights)
+        data_left, data_right = st.columns(2)
+        with data_left:
+            st.download_button(
+                "Download nodes CSV",
+                data=df_to_csv_bytes(nodes_df),
+                file_name=NETWORK_NODES_FILE,
+                mime="text/csv",
+            )
+        with data_right:
+            st.download_button(
+                "Download edges CSV",
+                data=df_to_csv_bytes(edges_df),
+                file_name=NETWORK_EDGES_FILE,
+                mime="text/csv",
+            )
+        render_paginated_dataframe(nodes_df, key="aspect_network_nodes", label="Nodes", default_page_size=25)
+        render_paginated_dataframe(edges_df, key="aspect_network_edges", label="Edges", default_page_size=25)
 
 
 def _render_output_downloads(project_dir: Path) -> None:
     files = [
         ("Validasi input", "01_entity_validation.csv"),
+        ("Jaringan aspek nodes", NETWORK_NODES_FILE),
+        ("Jaringan aspek edges", NETWORK_EDGES_FILE),
+        ("Profil jaringan", NETWORK_PROFILE_FILE),
+        ("Rekomendasi jaringan", NETWORK_RECOMMENDATION_FILE),
         ("Ringkasan akhir", "06_candidate_summary_normalized.csv"),
         ("Mapping normalisasi", "05_candidate_code_mapping.csv"),
         ("Candidate code normalized", "05_candidate_code_normalized.csv"),
@@ -2258,6 +2585,7 @@ def render_candidate_code_editor(project_dir: Path) -> None:
         save_df(working_mapping.reindex(columns=NORMALIZATION_MAPPING_COLUMNS), project_dir / "05_candidate_code_mapping.csv")
         save_df(working_normalized, project_dir / "05_candidate_code_normalized.csv")
         refreshed_summary = build_normalized_candidate_summary(working_normalized, project_dir=project_dir, force=True)
+        build_aspect_network_outputs(project_dir, force=True)
         _append_manual_edit_audit(
             project_dir,
             {
@@ -2348,62 +2676,68 @@ def show_outputs(project_dir: Path) -> None:
         "Ringkasan akhir",
         "Perubahan label",
         "Edit aspek",
+        "Jaringan aspek",
         "Data pendukung",
         "Catatan proses",
     ])
 
     with tabs[0]:
-        overview_col, table_col = st.columns([0.95, 1.35], gap="large")
-        with overview_col:
-            st.markdown("**Sorotan hasil**")
-            st.caption("Ringkasan singkat untuk membaca hasil tanpa masuk ke detail teknis.")
-            if not final_summary.empty:
-                metric_a, metric_b, metric_c = st.columns(3)
-                metric_a.metric("Aspek akhir", normalized_summary_n)
-                metric_b.metric("Label dirapikan", changed_count)
-                metric_c.metric("Perlu dicek", error_n)
+        st.markdown("**Sorotan hasil**")
+        st.caption("Ringkasan singkat untuk membaca hasil tanpa masuk ke detail teknis.")
+        if not final_summary.empty:
+            metric_a, metric_b, metric_c, summary_col = st.columns([0.9, 0.9, 0.9, 2.4], gap="small")
+            metric_a.metric("Aspek akhir", normalized_summary_n)
+            metric_b.metric("Label dirapikan", changed_count)
+            metric_c.metric("Perlu dicek", error_n)
+            if generic_heads:
+                note_text = (
+                    "Ada nama aspek yang mungkin masih terlalu umum. Cek tab Perubahan label "
+                    "bila hasil terasa terlalu melebar."
+                )
+            elif relabel:
+                note_text = "Ada label yang dirapikan otomatis. Detailnya tersedia di tab Perubahan label."
+            else:
+                note_text = "Ringkasan akhir sudah stabil dan siap ditinjau."
+            with summary_col:
                 st.markdown(
                     f"""
-                    <div class="insight-panel">
-                        <strong>Status hasil:</strong> <span class="{health_class}">{health_text}</span><br>
-                        <span>{reduction_text}. Label yang dirapikan: {changed_count}. Data perlu dicek: {error_n}.</span>
+                    <div class="insight-panel" style="min-height: 70px; padding: 14px 16px;">
+                        <strong>Status hasil:</strong> <span class="{health_class}">{health_text}</span>
+                        <span style="display:block; margin-top:4px;">{reduction_text}. Label dirapikan: {changed_count}. Perlu dicek: {error_n}.</span>
+                        <span style="display:block; margin-top:4px;">{note_text}</span>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
-                if generic_heads:
-                    st.warning(
-                        "Ada nama aspek yang mungkin masih terlalu umum. Cek tab Perubahan label bila hasil terasa terlalu melebar."
-                    )
-                elif relabel:
-                    st.info("Ada label yang dirapikan otomatis. Detailnya tersedia di tab Perubahan label.")
-                else:
-                    st.success("Ringkasan akhir sudah stabil dan siap ditinjau.")
-            elif not early_summary.empty:
-                metric_a, metric_b, metric_c = st.columns(3)
-                metric_a.metric("Aspek awal", summary_n or cand_n)
-                metric_b.metric("Aspek akhir", normalized_summary_n)
-                metric_c.metric("Perlu dicek", error_n)
-                st.info("Ringkasan akhir belum tersedia. Panel kanan menampilkan ringkasan sementara.")
-            else:
-                st.info("Ringkasan belum tersedia.")
-        with table_col:
-            if not final_summary.empty:
-                render_paginated_dataframe(
-                    final_summary,
-                    key="final_summary",
-                    label="Ringkasan akhir",
-                    default_page_size=25,
-                )
-            elif not early_summary.empty:
-                render_paginated_dataframe(
-                    early_summary,
-                    key="early_summary_fallback",
-                    label="Ringkasan awal",
-                    default_page_size=25,
-                )
-            else:
-                st.info("Ringkasan belum tersedia.")
+        elif not early_summary.empty:
+            metric_a, metric_b, metric_c, summary_col = st.columns([0.9, 0.9, 0.9, 2.4], gap="small")
+            metric_a.metric("Aspek awal", summary_n or cand_n)
+            metric_b.metric("Aspek akhir", normalized_summary_n)
+            metric_c.metric("Perlu dicek", error_n)
+            with summary_col:
+                st.info("Ringkasan akhir belum tersedia. Tabel di bawah menampilkan ringkasan sementara.")
+        else:
+            st.info("Ringkasan belum tersedia.")
+
+        st.markdown("<div style='height: 0.35rem;'></div>", unsafe_allow_html=True)
+        if not final_summary.empty:
+            render_paginated_dataframe(
+                final_summary,
+                key="final_summary",
+                label="Ringkasan akhir",
+                default_page_size=25,
+                height=620,
+            )
+        elif not early_summary.empty:
+            render_paginated_dataframe(
+                early_summary,
+                key="early_summary_fallback",
+                label="Ringkasan awal",
+                default_page_size=25,
+                height=620,
+            )
+        else:
+            st.info("Ringkasan belum tersedia.")
 
     with tabs[1]:
         if not mapping_df.empty:
@@ -2451,6 +2785,9 @@ def show_outputs(project_dir: Path) -> None:
         render_candidate_code_editor(project_dir)
 
     with tabs[3]:
+        render_aspect_network_tab(project_dir)
+
+    with tabs[4]:
         data_tabs = st.tabs(
             [
                 "Aspek per pendapat",
@@ -2486,7 +2823,7 @@ def show_outputs(project_dir: Path) -> None:
             else:
                 st.info("Run lama ini belum memiliki laporan validasi input.")
 
-    with tabs[4]:
+    with tabs[5]:
         if quality_report:
             st.markdown("**Catatan kualitas hasil**")
             if generic_heads:
@@ -2506,6 +2843,8 @@ def show_outputs(project_dir: Path) -> None:
             ("05_candidate_code_mapping.csv", "Riwayat perapihan label"),
             ("05_candidate_code_normalized.csv", "Aspek setelah dirapikan"),
             ("06_candidate_summary_normalized.csv", "Ringkasan akhir"),
+            (NETWORK_NODES_FILE, "Jaringan aspek nodes"),
+            (NETWORK_EDGES_FILE, "Jaringan aspek edges"),
         ]:
             status_rows.append({"output": label, "file": filename, "rows": _count_rows(project_dir, filename)})
         with error_tabs[0]:
@@ -2995,6 +3334,7 @@ def main() -> None:
         candidate_force = bool(settings.get("force_from_start")) or force_step in {"opinion_units", "pos_tagging", "candidate_codes"}
         normalization_force = bool(settings.get("force_from_start")) or force_step in {"opinion_units", "pos_tagging", "candidate_codes", "candidate_normalization"}
         summary_force = bool(settings.get("force_from_start")) or force_step in {"opinion_units", "pos_tagging", "candidate_codes", "candidate_normalization", "candidate_summary"}
+        network_force = summary_force or force_step == "aspect_network"
 
         if opinion_force:
             log_fn("Rerun aktif untuk 02_opinion_units.csv.")
@@ -3114,6 +3454,37 @@ def main() -> None:
         log_fn("Membangun 06_candidate_summary_normalized.csv...")
         normalized_summary_df = build_normalized_candidate_summary(normalized_df, project_dir=project_dir, force=summary_force)
         log_fn(f"06_candidate_summary_normalized.csv selesai: {len(normalized_summary_df)} normalized candidate_code unik.")
+
+        if settings["run_until"] == "candidate_summary":
+            progress.progress(1.0)
+            update_timer_fn()
+            status.success("Selesai sampai 06_candidate_summary_normalized.csv.")
+            log_fn("Selesai sampai 06_candidate_summary_normalized.csv.")
+            render_run_completion(project_dir)
+            return
+
+        status.write("Membangun 07_aspect_network...")
+        log_fn("Membangun profil jaringan dan rekomendasi konfigurasi 07_aspect_network...")
+        network_recommender = make_aspect_network_recommender(
+            model_id=settings["model_id"],
+            timeout_seconds=settings["timeout_seconds"],
+            retry_per_call=settings["retry_per_call"],
+            always_retry_per_call=settings["always_retry"],
+            raw_log_path=project_dir / "raw_llm_responses.jsonl" if settings["save_raw_responses"] else None,
+            log_fn=log_fn,
+            update_timer_fn=update_timer_fn,
+            bypass_cache=bool(settings.get("force_from_start", False)),
+        )
+        network_nodes_df, network_edges_df, network_recommendation, _network_insights = build_aspect_network_outputs(
+            project_dir,
+            recommender=network_recommender,
+            force=network_force,
+        )
+        log_fn(
+            "07_aspect_network selesai: "
+            f"{len(network_nodes_df)} node, {len(network_edges_df)} edge, "
+            f"sumber rekomendasi={network_recommendation.get('source', 'unknown')}."
+        )
 
         progress.progress(1.0)
         update_timer_fn()

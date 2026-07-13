@@ -559,18 +559,18 @@ def inject_custom_css() -> None:
         }
         .step-row {
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             gap: 8px;
             margin: 12px 0 18px 0;
         }
         .step-pill {
-            min-height: 72px;
+            min-height: 76px;
             border: 1px solid var(--border);
             border-radius: 14px;
             background: #ffffff;
-            padding: 12px;
+            padding: 10px;
             color: var(--text-muted);
-            font-size: 0.84rem;
+            font-size: 0.78rem;
             box-shadow: var(--shadow-sm);
             transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
         }
@@ -579,7 +579,7 @@ def inject_custom_css() -> None:
             border-color: #cfd1ff;
             box-shadow: var(--shadow-md);
         }
-        .step-pill strong { display: block; color: var(--text-main); margin-bottom: 5px; }
+        .step-pill strong { display: block; color: var(--text-main); margin-bottom: 5px; font-size: 0.82rem; }
         .step-code {
             display: inline-block;
             color: #1d4ed8;
@@ -588,7 +588,7 @@ def inject_custom_css() -> None:
         }
         .status-stepper {
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             gap: 8px;
             margin: 12px 0 18px 0;
         }
@@ -801,6 +801,7 @@ def render_pipeline_overview() -> None:
         ("04", "Cari Aspek", "Sistem mengambil hal yang sedang dibandingkan."),
         ("05", "Rapikan Label", "Nama aspek yang mirip digabung."),
         ("06", "Buat Ringkasan", "Tampilkan jumlah kemunculan dan contoh pendapat."),
+        ("07", "Jaringan Aspek", "Visualkan hubungan aspek dan kata pendukung."),
     ]
     html = '<div class="step-row">'
     for code, title, body in steps:
@@ -817,6 +818,7 @@ def render_status_stepper(statuses: dict[str, str]) -> None:
         ("4", "Aspek ditemukan", "candidate_codes"),
         ("5", "Label dirapikan", "candidate_normalization"),
         ("6", "Ringkasan jadi", "candidate_summary"),
+        ("7", "Jaringan aspek", "aspect_network"),
     ]
     html = '<div class="status-stepper">'
     for code, title, key in steps:

@@ -139,6 +139,7 @@ STEP_VERSIONS = {
     "candidate_codes": "v1_pos_guided_single_opinion_unit",
     "candidate_normalization": "v4_group_first_compact_global_mapping",
     "candidate_summary": "v2_python_groupby_normalized_candidate_code",
+    "aspect_network": "v1_dataset_adaptive_aspect_network",
 }
 
 
@@ -149,4 +150,5 @@ RUN_UNTIL_OPTIONS = {
     "Sampai candidate_codes (03)": "candidate_codes",
     "Sampai normalisasi candidate_code (05)": "candidate_normalization",
     "Sampai candidate_summary normalisasi (06)": "candidate_summary",
+    "Sampai jaringan aspek (07)": "aspect_network",
 }

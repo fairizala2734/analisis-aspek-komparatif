@@ -31,6 +31,9 @@ include = [
   "ui*",
 ]
 
+[tool.setuptools.package-data]
+pipeline = ["resources/*.txt"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
